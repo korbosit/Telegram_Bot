@@ -214,196 +214,105 @@ const disableReminder = (chatId, reminderType) => {
     }
 };
 
-// Обработчик callback_query
-bot.on("callback_query", async (query) => {
-    const chatId = query.message.chat.id;
-    const callbackData = query.data;
+// Функция для обработки добавления комментариев
+const handleAddComment = async (chatId, commentType) => {
+    bot.sendMessage(chatId, "Введите ваш комментарий:");
 
-    if (
-        callbackData === "enable_daily_reminder" ||
-        callbackData === "enable_weekly_reminder" ||
-        callbackData === "enable_monthly_reminder"
-    ) {
-        await enableReminder(chatId, callbackData);
-    } else if (callbackData === "add_comment") {
-        // Новый обработчик для добавления комментария
-        // Запрос комментария у пользователя
-        bot.sendMessage(chatId, "Введите ваш комментарий:");
+    bot.once("message", async (msg) => {
+        const comment = msg.text;
+        const userId = chatId.toString();
+        let range;
 
-        // Обработчик ввода комментария
-        bot.once("message", async (msg) => {
-            const comment = msg.text;
-            const userId = chatId.toString();
-            // например, в Google Sheets или базу данных
-            try {
-                // Определяем диапазон ячеек для комментария
-                const response = await getDataFromSheet(
-                    config.spreadsheetId,
-                    "Sheet1!A:A"
-                );
-                const userIndex = response.findIndex(
-                    (row) => row[0] === userId
-                );
-                if (userIndex === -1) throw new Error("User not found");
-                const startRow = Math.floor(userIndex / 10) * 10 + 2;
-                const range = `Sheet1!D${startRow}:D${startRow + 9}`;
-
-                // Добавляем комментарий в Google Sheets
-                await appendDataToSheet(config.spreadsheetId, range, comment);
-
-                bot.sendMessage(
-                    chatId,
-                    "Ваш комментарий для целей на день сохранен."
-                );
-            } catch (error) {
-                console.error(`Ошибка при сохранении комментария: ${error}`);
-                bot.sendMessage(
-                    chatId,
-                    "Произошла ошибка при сохранении комментария. Пожалуйста, попробуйте позже."
-                );
-            }
-        });
-    } else {
         try {
-            const goals = await getUserGoals(chatId, callbackData);
+            const response = await getDataFromSheet(
+                config.spreadsheetId,
+                "Sheet1!A:A"
+            );
+            const userIndex = response.findIndex((row) => row[0] === userId);
+            if (userIndex === -1) throw new Error("User not found");
+            const startRow = Math.floor(userIndex / 10) * 10 + 2;
 
-            if (goals.length > 0) {
-                const messageMap = {
-                    daily_goals: "Твои цели на день:\n\n",
-                    weekly_goals: "Твои цели на неделю:\n\n",
-                    monthly_goals: "Твои цели на месяц:\n\n",
-                };
-
-                const formattedGoals = goals
-                    .map((goal, index) => `${index + 1}. ${goal}`)
-                    .join("\n");
-                const messageText = `${messageMap[callbackData]}${formattedGoals}`;
-                const reminderDataMap = {
-                    daily_goals: "enable_daily_reminder",
-                    weekly_goals: "enable_weekly_reminder",
-                    monthly_goals: "enable_monthly_reminder",
-                };
-
-                bot.sendMessage(chatId, messageText, {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: "Включить напоминание",
-                                    callback_data:
-                                        reminderDataMap[callbackData],
-                                },
-                            ],
-                        ],
-                    },
-                });
-            } else {
-                bot.sendMessage(chatId, "Не удалось найти ваши данные.");
+            if (commentType === "день") {
+                range = `Sheet1!D${startRow}:D${startRow + 9}`;
+            } else if (commentType === "неделю") {
+                range = `Sheet1!F${startRow}:F${startRow + 9}`;
+            } else if (commentType === "месяц") {
+                range = `Sheet1!H${startRow}:H${startRow + 9}`;
             }
+
+            await appendDataToSheet(config.spreadsheetId, range, comment);
+            bot.sendMessage(
+                chatId,
+                `Ваш комментарий для целей на ${commentType} сохранен.`
+            );
         } catch (error) {
-            console.error(`Ошибка при обработке данных: ${error}`);
+            console.error(`Ошибка при сохранении комментария: ${error}`);
             bot.sendMessage(
                 chatId,
-                "Произошла ошибка при обработке данных. Пожалуйста, попробуйте позже."
+                "Произошла ошибка при сохранении комментария. Пожалуйста, попробуйте позже."
             );
         }
+    });
+};
+
+// Обработчик callback_query
+bot.on("callback_query", async (callbackQuery) => {
+    const chatId = callbackQuery.message.chat.id;
+    const data = callbackQuery.data;
+
+    switch (data) {
+        case "daily_goals":
+            enableReminder(chatId, "enable_daily_reminder");
+            break;
+        case "weekly_goals":
+            enableReminder(chatId, "enable_weekly_reminder");
+            break;
+        case "monthly_goals":
+            enableReminder(chatId, "enable_monthly_reminder");
+            break;
+        case "disable_daily_reminder":
+            disableReminder(chatId, "enable_daily_reminder");
+            break;
+        case "disable_weekly_reminder":
+            disableReminder(chatId, "enable_weekly_reminder");
+            break;
+        case "disable_monthly_reminder":
+            disableReminder(chatId, "enable_monthly_reminder");
+            break;
+        case "add_comment":
+            bot.sendMessage(chatId, "Выберите тип комментария:", {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: "День",
+                                callback_data: "comment_daily",
+                            },
+                            {
+                                text: "Неделя",
+                                callback_data: "comment_weekly",
+                            },
+                            {
+                                text: "Месяц",
+                                callback_data: "comment_monthly",
+                            },
+                        ],
+                    ],
+                },
+            });
+            break;
+        case "comment_daily":
+            handleAddComment(chatId, "день");
+            break;
+        case "comment_weekly":
+            handleAddComment(chatId, "неделю");
+            break;
+        case "comment_monthly":
+            handleAddComment(chatId, "месяц");
+            break;
+        default:
+            break;
     }
-});
 
-// Обработчики команд для включения напоминаний
-bot.onText(/\/enable_daily_reminder/, async (msg) => {
-    await enableReminder(msg.chat.id, "enable_daily_reminder");
-});
-
-bot.onText(/\/enable_weekly_reminder/, async (msg) => {
-    await enableReminder(msg.chat.id, "enable_weekly_reminder");
-});
-
-bot.onText(/\/enable_monthly_reminder/, async (msg) => {
-    await enableReminder(msg.chat.id, "enable_monthly_reminder");
-});
-
-// Обработчик команды /get_daily_reminder
-bot.onText(/\/get_daily_reminder/, async (msg) => {
-    const chatId = msg.chat.id;
-    try {
-        const goals = await getUserGoals(chatId, "daily_goals");
-
-        if (goals.length > 0) {
-            const formattedGoals = goals
-                .map((goal, index) => `${index + 1}. ${goal}`)
-                .join("\n");
-            bot.sendMessage(chatId, `Твои цели на день:\n\n${formattedGoals}`);
-        } else {
-            bot.sendMessage(chatId, "У вас нет целей на день.");
-        }
-    } catch (error) {
-        console.error(`Ошибка при обработке данных: ${error}`);
-        bot.sendMessage(
-            chatId,
-            "Произошла ошибка при обработке данных. Пожалуйста, попробуйте позже."
-        );
-    }
-});
-
-// Обработчик команды /get_weekly_reminder
-bot.onText(/\/get_weekly_reminder/, async (msg) => {
-    const chatId = msg.chat.id;
-    try {
-        const goals = await getUserGoals(chatId, "weekly_goals");
-
-        if (goals.length > 0) {
-            const formattedGoals = goals
-                .map((goal, index) => `${index + 1}. ${goal}`)
-                .join("\n");
-            bot.sendMessage(
-                chatId,
-                `Твои цели на неделю:\n\n${formattedGoals}`
-            );
-        } else {
-            bot.sendMessage(chatId, "У вас нет целей на неделю.");
-        }
-    } catch (error) {
-        console.error(`Ошибка при обработке данных: ${error}`);
-        bot.sendMessage(
-            chatId,
-            "Произошла ошибка при обработке данных. Пожалуйста, попробуйте позже."
-        );
-    }
-});
-
-// Обработчик команды /get_monthly_reminder
-bot.onText(/\/get_monthly_reminder/, async (msg) => {
-    const chatId = msg.chat.id;
-    try {
-        const goals = await getUserGoals(chatId, "monthly_goals");
-
-        if (goals.length > 0) {
-            const formattedGoals = goals
-                .map((goal, index) => `${index + 1}. ${goal}`)
-                .join("\n");
-            bot.sendMessage(chatId, `Твои цели на месяц:\n\n${formattedGoals}`);
-        } else {
-            bot.sendMessage(chatId, "У вас нет целей на месяц.");
-        }
-    } catch (error) {
-        console.error(`Ошибка при обработке данных: ${error}`);
-        bot.sendMessage(
-            chatId,
-            "Произошла ошибка при обработке данных. Пожалуйста, попробуйте позже."
-        );
-    }
-});
-
-// Обработчики команд для отключения напоминаний
-bot.onText(/\/delete_daily_reminder/, (msg) => {
-    disableReminder(msg.chat.id, "enable_daily_reminder");
-});
-
-bot.onText(/\/delete_weekly_reminder/, (msg) => {
-    disableReminder(msg.chat.id, "enable_weekly_reminder");
-});
-
-bot.onText(/\/delete_monthly_reminder/, (msg) => {
-    disableReminder(msg.chat.id, "enable_monthly_reminder");
+    bot.answerCallbackQuery(callbackQuery.id);
 });
