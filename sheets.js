@@ -48,7 +48,30 @@ const appendDataToSheet = async (spreadsheetId, range, value) => {
     }
 };
 
+const getNextFreeRow = async (spreadsheetId, sheetName) => {
+    try {
+        const response = await gsapi.spreadsheets.values.get({
+            spreadsheetId,
+            range: `${sheetName}!A:A`,
+        });
+
+        const values = response.data.values || [];
+        // Ищем первую пустую строку, которая должна быть кратна 10 плюс 2
+        const lastRow = values.filter((row) =>
+            row.some((cell) => cell !== "")
+        ).length;
+        const nextFreeRow = Math.floor(lastRow / 10) * 10 + 2;
+        return nextFreeRow;
+    } catch (error) {
+        console.error(
+            `Ошибка при получении следующей свободной строки: ${error}`
+        );
+        throw error;
+    }
+};
+
 module.exports = {
     getDataFromSheet,
     appendDataToSheet,
+    getNextFreeRow,
 };

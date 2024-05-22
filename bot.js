@@ -1,7 +1,13 @@
 const TelegramBot = require("node-telegram-bot-api");
 const config = require("./config");
 const cron = require("node-cron");
-const { getDataFromSheet, appendDataToSheet } = require("./sheets");
+const {
+    getDataFromSheet,
+    appendDataToSheet,
+    getNextFreeRow,
+} = require("./sheets");
+
+const ADMIN_USER_ID = 6810209450;
 
 const bot = new TelegramBot(config.botToken, { polling: true });
 let registeredUsers = {};
@@ -21,11 +27,21 @@ bot.onText(/\/start/, async (msg) => {
 
     if (!registeredUsers[chatId]) {
         try {
-            // Записываем user_id и first_name в Google Sheets
+            // Находим первую пустую строку, соответствующую правилам
+            const firstEmptyRow = await getNextFreeRow(
+                config.spreadsheetId,
+                "Sheet1"
+            );
+
+            // Записываем данные пользователя в первую пустую строку
             await appendDataToSheet(
                 config.spreadsheetId,
-                "Sheet1",
-                chatId.toString(),
+                `Sheet1!A${firstEmptyRow}`,
+                chatId.toString()
+            );
+            await appendDataToSheet(
+                config.spreadsheetId,
+                `Sheet1!B${firstEmptyRow}`,
                 firstName
             );
 
@@ -59,6 +75,10 @@ bot.onText(/\/start/, async (msg) => {
             );
         } catch (error) {
             console.error(`Ошибка при регистрации пользователя: ${error}`);
+            bot.sendMessage(
+                chatId,
+                "Произошла ошибка при регистрации. Пожалуйста, попробуйте позже."
+            );
         }
     } else {
         bot.sendMessage(
@@ -85,6 +105,23 @@ bot.onText(/\/start/, async (msg) => {
                 },
             }
         );
+    }
+});
+
+// Обработчик команды /clear_cache
+bot.onText(/\/clear_cache/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    // Проверка, является ли отправитель команды админом
+    const isAdmin = userId === ADMIN_USER_ID;
+
+    if (isAdmin) {
+        registeredUsers = {};
+        reminderTasks = {};
+        bot.sendMessage(chatId, "Кэш успешно очищен.");
+    } else {
+        bot.sendMessage(chatId, "У вас нет прав для выполнения этой команды.");
     }
 });
 
