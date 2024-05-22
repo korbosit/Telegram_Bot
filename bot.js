@@ -127,28 +127,16 @@ bot.onText(/\/clear_cache/, async (msg) => {
 });
 
 // Функция для включения напоминаний
-const enableReminder = async (chatId, reminderType) => {
+const enableReminder = async (chatId, reminderType, period) => {
     const reminderMap = {
         enable_daily_reminder: {
-            schedule: "30 9,15 * * 1-5", // 9:30 AM и 3:00 PM по будням
-            message: "Твои цели на день",
-            goalsCallback: "daily_goals",
-            successMessage:
-                "Отлично! Напоминание включено для твоих целей на день! Оставляй комментарий по поставленным задачам с помощью кнопки ниже. Ты также можешь оставить комментарии, вызвав команду /comments",
+            successMessage: `Напоминания для целей на ${period} включены!`,
         },
         enable_weekly_reminder: {
-            schedule: "35 9 * * 1", // 9:35 AM каждый понедельник
-            message: "Твои цели на неделю",
-            goalsCallback: "weekly_goals",
-            successMessage:
-                "Отлично! Напоминание включено для твоих целей на неделю! Оставляй комментарий по поставленным задачам с помощью кнопки ниже. Ты также можешь оставить комментарии, вызвав команду /comments",
+            successMessage: `Напоминания для целей на ${period} включены!`,
         },
         enable_monthly_reminder: {
-            schedule: "0 9 1 * *", // 9:00 AM в первый день каждого месяца
-            message: "Твои цели на месяц",
-            goalsCallback: "monthly_goals",
-            successMessage:
-                "Отлично! Напоминание включено для твоих целей на месяц! Оставляй комментарий по поставленным задачам с помощью кнопки ниже. Ты также можешь оставить комментарии, вызвав команду /comments",
+            successMessage: `Напоминания для целей на ${period} включены!`,
         },
     };
 
@@ -157,51 +145,24 @@ const enableReminder = async (chatId, reminderType) => {
     if (reminder) {
         try {
             // Устанавливаем задачу по расписанию
-            const task = cron.schedule(reminder.schedule, async () => {
-                try {
-                    const goals = await getUserGoals(
-                        chatId,
-                        reminder.goalsCallback
-                    );
-                    const formattedGoals = goals
-                        .map((goal, index) => `${index + 1}. ${goal}`)
-                        .join("\n");
-                    bot.sendMessage(
-                        chatId,
-                        `${reminder.message}:\n\n${formattedGoals}\n\nОставляй комментарий по поставленным задачам с помощью кнопки ниже. Ты также можешь оставить комментарии, вызвав команду /comments`,
-                        {
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [
-                                        {
-                                            text: "Комментарии",
-                                            callback_data: "add_comment",
-                                        },
-                                    ],
-                                ],
-                            },
-                        }
-                    );
-                } catch (error) {
-                    console.error(`Ошибка при обработке данных: ${error}`);
-                    bot.sendMessage(
-                        chatId,
-                        "Произошла ошибка при обработке данных. Пожалуйста, попробуйте позже."
-                    );
-                }
+            const task = cron.schedule("0 9 * * 1", async () => {
+                bot.sendMessage(chatId, reminder.successMessage, {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: "Комментарии",
+                                    callback_data: "add_comment",
+                                },
+                            ],
+                        ],
+                    },
+                });
             });
 
             // Сохраняем задачу
             reminderTasks[chatId] = reminderTasks[chatId] || {};
             reminderTasks[chatId][reminderType] = task;
-
-            bot.sendMessage(chatId, reminder.successMessage, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "Комментарии", callback_data: "add_comment" }],
-                    ],
-                },
-            });
         } catch (error) {
             console.error(`Ошибка при установке напоминания: ${error}`);
             bot.sendMessage(
@@ -267,7 +228,6 @@ const handleAddComment = async (chatId, commentType) => {
     });
 };
 
-// Обработчик callback_query
 bot.on("callback_query", async (callbackQuery) => {
     const chatId = callbackQuery.message.chat.id;
     const data = callbackQuery.data;
@@ -279,18 +239,22 @@ bot.on("callback_query", async (callbackQuery) => {
                 const formattedGoals = goals
                     .map((goal, index) => `${index + 1}. ${goal}`)
                     .join("\n");
-                const messageText = `Твои цели на день:\n\n${formattedGoals}`;
-                const inline_keyboard = [
-                    [
-                        {
-                            text: "Включить напоминание",
-                            callback_data: "enable_daily_reminder",
+                bot.sendMessage(
+                    chatId,
+                    `Твои цели на день:\n\n${formattedGoals}`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: "Включить напоминание",
+                                        callback_data: "enable_daily_reminder",
+                                    },
+                                ],
+                            ],
                         },
-                    ],
-                ];
-                bot.sendMessage(chatId, messageText, {
-                    reply_markup: { inline_keyboard },
-                });
+                    }
+                );
             } catch (error) {
                 console.error(
                     `Ошибка при получении ежедневных целей: ${error}`
@@ -307,18 +271,22 @@ bot.on("callback_query", async (callbackQuery) => {
                 const formattedGoals = goals
                     .map((goal, index) => `${index + 1}. ${goal}`)
                     .join("\n");
-                const messageText = `Твои цели на неделю:\n\n${formattedGoals}`;
-                const inline_keyboard = [
-                    [
-                        {
-                            text: "Включить напоминание",
-                            callback_data: "enable_weekly_reminder",
+                bot.sendMessage(
+                    chatId,
+                    `Твои цели на неделю:\n\n${formattedGoals}`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: "Включить напоминание",
+                                        callback_data: "enable_weekly_reminder",
+                                    },
+                                ],
+                            ],
                         },
-                    ],
-                ];
-                bot.sendMessage(chatId, messageText, {
-                    reply_markup: { inline_keyboard },
-                });
+                    }
+                );
             } catch (error) {
                 console.error(`Ошибка при получении недельных целей: ${error}`);
                 bot.sendMessage(
@@ -333,18 +301,23 @@ bot.on("callback_query", async (callbackQuery) => {
                 const formattedGoals = goals
                     .map((goal, index) => `${index + 1}. ${goal}`)
                     .join("\n");
-                const messageText = `Твои цели на месяц:\n\n${formattedGoals}`;
-                const inline_keyboard = [
-                    [
-                        {
-                            text: "Включить напоминание",
-                            callback_data: "enable_monthly_reminder",
+                bot.sendMessage(
+                    chatId,
+                    `Твои цели на месяц:\n\n${formattedGoals}`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: "Включить напоминание",
+                                        callback_data:
+                                            "enable_monthly_reminder",
+                                    },
+                                ],
+                            ],
                         },
-                    ],
-                ];
-                bot.sendMessage(chatId, messageText, {
-                    reply_markup: { inline_keyboard },
-                });
+                    }
+                );
             } catch (error) {
                 console.error(`Ошибка при получении месячных целей: ${error}`);
                 bot.sendMessage(
@@ -353,17 +326,80 @@ bot.on("callback_query", async (callbackQuery) => {
                 );
             }
             break;
-        case "disable_daily_reminder":
-            disableReminder(chatId, "enable_daily_reminder");
+        case "add_comment":
+            // Отправка кнопок "День", "Неделя", "Месяц" после нажатия кнопки "Комментарии"
+            bot.sendMessage(chatId, "Выберите тип комментария:", {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: "День", callback_data: "comment_daily" },
+                            { text: "Неделя", callback_data: "comment_weekly" },
+                            { text: "Месяц", callback_data: "comment_monthly" },
+                        ],
+                    ],
+                },
+            });
             break;
-        case "disable_weekly_reminder":
-            disableReminder(chatId, "enable_weekly_reminder");
+        case "comment_daily":
+            // Логика для обработки комментариев к ежедневным целям
             break;
-        case "disable_monthly_reminder":
-            disableReminder(chatId, "enable_monthly_reminder");
+        case "comment_weekly":
+            // Логика для обработки комментариев к недельным целям
+            break;
+        case "comment_monthly":
+            // Логика для обработки комментариев к месячным целям
+            break;
+        case "enable_daily_reminder":
+            enableReminder(chatId, "enable_daily_reminder");
+            bot.sendMessage(chatId, "Напоминания для целей на день включены!", {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "Комментарии", callback_data: "add_comment" }],
+                    ],
+                },
+            });
+            break;
+        case "enable_weekly_reminder":
+            enableReminder(chatId, "enable_weekly_reminder");
+            bot.sendMessage(
+                chatId,
+                "Напоминания для целей на неделю включены!",
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: "Комментарии",
+                                    callback_data: "add_comment",
+                                },
+                            ],
+                        ],
+                    },
+                }
+            );
+            break;
+        case "enable_monthly_reminder":
+            enableReminder(chatId, "enable_monthly_reminder");
+            bot.sendMessage(
+                chatId,
+                "Напоминания для целей на месяц включены!",
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: "Комментарии",
+                                    callback_data: "add_comment",
+                                },
+                            ],
+                        ],
+                    },
+                }
+            );
             break;
         default:
-            // Если нажата неизвестная кнопка, ничего не делаем
             break;
     }
+
+    bot.answerCallbackQuery(callbackQuery.id);
 });
