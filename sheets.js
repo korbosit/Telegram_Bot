@@ -16,6 +16,10 @@ client.authorize((err, tokens) => {
 
 const gsapi = google.sheets({ version: "v4", auth: client });
 
+const config = {
+    spreadsheetId: "1eG_rN34C4Fdrhx9uSFINUe-mqjE3e32jhrw2WfSKhV4", // Ваш Spreadsheet ID
+};
+
 // Функция для получения данных из Google Sheets
 const getDataFromSheet = async (spreadsheetId, range) => {
     try {
@@ -52,23 +56,13 @@ const getNextFreeRow = async (spreadsheetId, sheetName) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:A`,
+            range: `${sheetName}!A:B`,
         });
 
         const values = response.data.values || [];
-        const lastRow = values.filter((row) =>
-            row.some((cell) => cell !== "")
-        ).length;
-        const nextFreeRow = Math.floor(lastRow / 10) * 10 + 2;
-
-        // Проверяем, что nextFreeRow не занят
-        if (
-            values[nextFreeRow - 1] &&
-            values[nextFreeRow - 1].some((cell) => cell !== "")
-        ) {
-            return nextFreeRow + 10; // Если занят, переходим к следующему интервалу
-        }
-        return nextFreeRow;
+        const lastRow =
+            values.filter((row) => row.some((cell) => cell !== "")).length + 1;
+        return lastRow;
     } catch (error) {
         console.error(
             `Ошибка при получении следующей свободной строки: ${error}`
@@ -77,8 +71,67 @@ const getNextFreeRow = async (spreadsheetId, sheetName) => {
     }
 };
 
+const getUserRowIndex = async (spreadsheetId, userId) => {
+    try {
+        const response = await gsapi.spreadsheets.values.get({
+            spreadsheetId,
+            range: "Sheet1!A:A",
+        });
+
+        const values = response.data.values || [];
+        const userIndex = values.findIndex(
+            (row) => row[0] === userId.toString()
+        );
+
+        if (userIndex === -1) throw new Error("User not found");
+
+        const startRow = Math.floor(userIndex / 10) * 10 + 2;
+        return startRow;
+    } catch (error) {
+        console.error(
+            `Ошибка при получении индекса строки пользователя: ${error}`
+        );
+        throw error;
+    }
+};
+
+const getUserGoals = async (chatId, callbackData) => {
+    try {
+        const response = await getDataFromSheet(
+            config.spreadsheetId,
+            "Sheet1!A:A"
+        );
+        const values = response || [];
+        const userIndex = values.findIndex(
+            (row) => row[0] === chatId.toString()
+        );
+
+        if (userIndex === -1) throw new Error("User not found");
+
+        const startRow = Math.floor(userIndex / 10) * 10 + 2;
+
+        const rangeMap = {
+            daily_goals: `Sheet1!C${startRow}:C${startRow + 9}`,
+            weekly_goals: `Sheet1!E${startRow}:E${startRow + 9}`,
+            monthly_goals: `Sheet1!G${startRow}:G${startRow + 9}`,
+        };
+
+        const data = await getDataFromSheet(
+            config.spreadsheetId,
+            rangeMap[callbackData]
+        );
+        const goals = data.flat().filter((goal) => goal !== "");
+        return goals;
+    } catch (error) {
+        console.error(`Ошибка при получении данных целей: ${error}`);
+        throw error;
+    }
+};
+
 module.exports = {
     getDataFromSheet,
     appendDataToSheet,
     getNextFreeRow,
+    getUserGoals,
+    getUserRowIndex,
 };
