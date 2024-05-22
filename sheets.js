@@ -56,11 +56,18 @@ const getNextFreeRow = async (spreadsheetId, sheetName) => {
         });
 
         const values = response.data.values || [];
-        // Ищем первую пустую строку, которая должна быть кратна 10 плюс 2
         const lastRow = values.filter((row) =>
             row.some((cell) => cell !== "")
         ).length;
         const nextFreeRow = Math.floor(lastRow / 10) * 10 + 2;
+
+        // Проверяем, что nextFreeRow не занят
+        if (
+            values[nextFreeRow - 1] &&
+            values[nextFreeRow - 1].some((cell) => cell !== "")
+        ) {
+            return nextFreeRow + 10; // Если занят, переходим к следующему интервалу
+        }
         return nextFreeRow;
     } catch (error) {
         console.error(
