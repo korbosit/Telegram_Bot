@@ -28,24 +28,23 @@ bot.onText(/\/start/, async (msg) => {
 
     if (!registeredUsers[chatId]) {
         try {
+            // Находим первую пустую строку, соответствующую правилам
             const firstEmptyRow = await getNextFreeRow(
                 config.spreadsheetId,
                 "Sheet1"
             );
 
+            // Записываем данные пользователя в первую пустую строку
             await appendDataToSheet(
                 config.spreadsheetId,
-                `Sheet1!A${firstEmptyRow}`,
-                chatId.toString()
-            );
-            await appendDataToSheet(
-                config.spreadsheetId,
-                `Sheet1!B${firstEmptyRow}`,
-                firstName
+                `Sheet1!A${firstEmptyRow}:B${firstEmptyRow}`,
+                [chatId.toString(), firstName]
             );
 
+            // Регистрируем пользователя в кэш
             registeredUsers[chatId] = true;
 
+            // Отправляем приветственное сообщение и кнопки
             bot.sendMessage(
                 chatId,
                 `Приветствую тебя, ${firstName}, твой ID: ${chatId}! Я чат-бот для напоминаний твоих целей!`,

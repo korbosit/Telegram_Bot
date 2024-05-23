@@ -35,14 +35,17 @@ const getDataFromSheet = async (spreadsheetId, range) => {
 };
 
 // Функция для добавления данных в Google Sheets
-const appendDataToSheet = async (spreadsheetId, range, value) => {
+const appendDataToSheet = async (spreadsheetId, range, values) => {
     try {
+        const nextFreeRow = await getNextFreeRow(spreadsheetId, "Sheet1");
+        const newRowRange = `${range}${nextFreeRow}`;
+
         const response = await gsapi.spreadsheets.values.update({
             spreadsheetId,
-            range,
+            range: newRowRange,
             valueInputOption: "RAW",
             resource: {
-                values: [[value]],
+                values: [values],
             },
         });
         return response;
@@ -52,17 +55,31 @@ const appendDataToSheet = async (spreadsheetId, range, value) => {
     }
 };
 
+// Функция для получения следующей свободной строки, увеличивая индекс строки на 10 для каждого нового пользователя
 const getNextFreeRow = async (spreadsheetId, sheetName) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:B`,
+            range: `${sheetName}!A:A`,
         });
 
         const values = response.data.values || [];
-        const lastRow =
-            values.filter((row) => row.some((cell) => cell !== "")).length + 1;
-        return lastRow;
+        let nextRow;
+
+        // Если таблица пуста, новый пользователь будет добавлен во вторую строку
+        if (values.length === 0) {
+            nextRow = 2;
+        } else {
+            // Если таблица не пуста, определяем индекс последней строки
+            const lastRowIndex = values.length;
+
+            // Вычисляем номер следующей строки для нового пользователя
+            // Пользователи добавляются по блокам по 10 строк, начиная с 2
+            // Например, для второго пользователя это будет строка 12 (2 + 10)
+            nextRow = lastRowIndex + 10;
+        }
+
+        return nextRow;
     } catch (error) {
         console.error(
             `Ошибка при получении следующей свободной строки: ${error}`
