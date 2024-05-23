@@ -67,12 +67,14 @@ const getNextFreeRow = async (spreadsheetId, sheetName) => {
             nextRow = 2;
         } else {
             // Если таблица не пуста, определяем индекс последней строки
-            const lastRowIndex = values.length;
+            const lastRowIndex =
+                values.findLastIndex((row) =>
+                    row.some((value) => value !== "")
+                ) + 1;
 
-            // Вычисляем номер следующей строки для нового пользователя
-            // Пользователи добавляются по блокам по 10 строк, начиная с 2
-            // Например, для второго пользователя это будет строка 12 (2 + 10)
-            nextRow = lastRowIndex + 10;
+            // Вычисляем номер следующего блока строк для нового пользователя
+            const nextBlockIndex = Math.ceil(lastRowIndex / 10);
+            nextRow = nextBlockIndex * 10 + 2;
         }
 
         return nextRow;

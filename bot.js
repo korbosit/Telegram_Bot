@@ -21,12 +21,59 @@ bot.on("polling_error", (error) => {
     reminderTasks = {};
 });
 
+// Функция для проверки существования пользователя в таблице Google Sheets
+const isUserRegistered = async (chatId) => {
+    try {
+        const response = await getDataFromSheet(
+            config.spreadsheetId,
+            "Sheet1!A:A"
+        );
+        const userIds = response.map((row) => row[0]);
+        return userIds.includes(chatId.toString());
+    } catch (error) {
+        console.error(`Ошибка при проверке регистрации пользователя: ${error}`);
+        return false;
+    }
+};
+
+// Функция для очистки кэша при удалении пользователя из таблицы
+const clearCacheForDeletedUsers = async () => {
+    try {
+        const response = await getDataFromSheet(
+            config.spreadsheetId,
+            "Sheet1!A:A"
+        );
+        const userIds = response.map((row) => row[0]);
+
+        Object.keys(registeredUsers).forEach((chatId) => {
+            if (!userIds.includes(chatId)) {
+                delete registeredUsers[chatId];
+                if (reminderTasks[chatId]) {
+                    Object.values(reminderTasks[chatId]).forEach((task) =>
+                        task.stop()
+                    );
+                    delete reminderTasks[chatId];
+                }
+            }
+        });
+    } catch (error) {
+        console.error(
+            `Ошибка при очистке кэша для удаленных пользователей: ${error}`
+        );
+    }
+};
+
+// Запускаем функцию очистки кэша каждые 5 минут
+setInterval(clearCacheForDeletedUsers, 5 * 60 * 1000);
+
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.chat.first_name;
 
-    if (!registeredUsers[chatId]) {
+    const isRegistered = await isUserRegistered(chatId);
+
+    if (!isRegistered) {
         try {
             // Находим следующую свободную строку
             const nextFreeRow = await getNextFreeRow(
@@ -239,10 +286,6 @@ const handleAddComment = async (chatId, commentType) => {
 
             if (commentType === "день") {
                 range = `Sheet1!D${startRow}:D${startRow + 9}`;
-            } else if (commentType === "неделю") {
-                range = `Sheet1!F${startRow}:F${startRow + 9}`;
-            } else if (commentType === "месяц") {
-                range = `Sheet1!H${startRow}:H${startRow + 9}`;
             }
 
             await appendDataToSheet(config.spreadsheetId, range, comment);
@@ -278,6 +321,10 @@ bot.on("callback_query", async (callbackQuery) => {
                             {
                                 text: "Включить напоминание",
                                 callback_data: "enable_daily_reminder",
+                            },
+                            {
+                                text: "Добавить комментарий",
+                                callback_data: "add_comment",
                             },
                         ],
                     ],
@@ -362,15 +409,12 @@ bot.on("callback_query", async (callbackQuery) => {
             });
             break;
         case "comment_daily":
-            // Логика для обработки комментариев к ежедневным целям
             await handleAddComment(chatId, "день");
             break;
         case "comment_weekly":
-            // Логика для обработки комментариев к недельным целям
             await handleAddComment(chatId, "неделю");
             break;
         case "comment_monthly":
-            // Логика для обработки комментариев к месячным целям
             await handleAddComment(chatId, "месяц");
             break;
         default:
