@@ -34,15 +34,11 @@ const getDataFromSheet = async (spreadsheetId, range) => {
     }
 };
 
-// Функция для добавления данных в Google Sheets
 const appendDataToSheet = async (spreadsheetId, range, values) => {
     try {
-        const nextFreeRow = await getNextFreeRow(spreadsheetId, "Sheet1");
-        const newRowRange = `${range}${nextFreeRow}`;
-
-        const response = await gsapi.spreadsheets.values.update({
+        const response = await gsapi.spreadsheets.values.append({
             spreadsheetId,
-            range: newRowRange,
+            range,
             valueInputOption: "RAW",
             resource: {
                 values: [values],
@@ -55,12 +51,12 @@ const appendDataToSheet = async (spreadsheetId, range, values) => {
     }
 };
 
-// Функция для получения следующей свободной строки, увеличивая индекс строки на 10 для каждого нового пользователя
+// Функция для добавления данных в Google Sheets
 const getNextFreeRow = async (spreadsheetId, sheetName) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:A`,
+            range: `${sheetName}!A:B`,
         });
 
         const values = response.data.values || [];

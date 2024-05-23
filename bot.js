@@ -28,16 +28,16 @@ bot.onText(/\/start/, async (msg) => {
 
     if (!registeredUsers[chatId]) {
         try {
-            // Находим первую пустую строку, соответствующую правилам
-            const firstEmptyRow = await getNextFreeRow(
+            // Находим следующую свободную строку
+            const nextFreeRow = await getNextFreeRow(
                 config.spreadsheetId,
                 "Sheet1"
             );
 
-            // Записываем данные пользователя в первую пустую строку
+            // Записываем данные пользователя в следующую свободную строку
             await appendDataToSheet(
                 config.spreadsheetId,
-                `Sheet1!A${firstEmptyRow}:B${firstEmptyRow}`,
+                `Sheet1!A${nextFreeRow}:B${nextFreeRow}`,
                 [chatId.toString(), firstName]
             );
 
