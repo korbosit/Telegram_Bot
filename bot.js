@@ -6,6 +6,8 @@ const {
     appendDataToSheet,
     getNextFreeRow,
     getUserGoals,
+    updateUserGoals,
+    getUserRowIndex,
 } = require("./sheets");
 
 const ADMIN_USER_ID = 6810209450;
@@ -21,59 +23,12 @@ bot.on("polling_error", (error) => {
     reminderTasks = {};
 });
 
-// Функция для проверки существования пользователя в таблице Google Sheets
-const isUserRegistered = async (chatId) => {
-    try {
-        const response = await getDataFromSheet(
-            config.spreadsheetId,
-            "Sheet1!A:A"
-        );
-        const userIds = response.map((row) => row[0]);
-        return userIds.includes(chatId.toString());
-    } catch (error) {
-        console.error(`Ошибка при проверке регистрации пользователя: ${error}`);
-        return false;
-    }
-};
-
-// Функция для очистки кэша при удалении пользователя из таблицы
-const clearCacheForDeletedUsers = async () => {
-    try {
-        const response = await getDataFromSheet(
-            config.spreadsheetId,
-            "Sheet1!A:A"
-        );
-        const userIds = response.map((row) => row[0]);
-
-        Object.keys(registeredUsers).forEach((chatId) => {
-            if (!userIds.includes(chatId)) {
-                delete registeredUsers[chatId];
-                if (reminderTasks[chatId]) {
-                    Object.values(reminderTasks[chatId]).forEach((task) =>
-                        task.stop()
-                    );
-                    delete reminderTasks[chatId];
-                }
-            }
-        });
-    } catch (error) {
-        console.error(
-            `Ошибка при очистке кэша для удаленных пользователей: ${error}`
-        );
-    }
-};
-
-// Запускаем функцию очистки кэша каждые 5 минут
-setInterval(clearCacheForDeletedUsers, 5 * 60 * 1000);
-
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.chat.first_name;
 
-    const isRegistered = await isUserRegistered(chatId);
-
-    if (!isRegistered) {
+    if (!registeredUsers[chatId]) {
         try {
             // Находим следующую свободную строку
             const nextFreeRow = await getNextFreeRow(
@@ -196,6 +151,7 @@ const enableReminder = async (chatId, reminderType, bot, reminderTasks) => {
             const task = cron.schedule(reminder.schedule, async () => {
                 try {
                     const goals = await getUserGoals(
+                        config.spreadsheetId,
                         chatId,
                         reminder.goalsCallback
                     );
@@ -267,31 +223,22 @@ const disableReminder = (chatId, reminderType) => {
 };
 
 // Функция для обработки добавления комментариев
-const handleAddComment = async (chatId, commentType) => {
+const handleAddComment = async (chatId, goalType) => {
     bot.sendMessage(chatId, "Введите ваш комментарий:");
 
     bot.once("message", async (msg) => {
         const comment = msg.text;
-        const userId = chatId.toString();
-        let range;
-
         try {
-            const response = await getDataFromSheet(
+            await updateUserGoals(
                 config.spreadsheetId,
-                "Sheet1!A:A"
+                chatId,
+                goalType,
+                "",
+                comment
             );
-            const userIndex = response.findIndex((row) => row[0] === userId);
-            if (userIndex === -1) throw new Error("User not found");
-            const startRow = Math.floor(userIndex / 10) * 10 + 2;
-
-            if (commentType === "день") {
-                range = `Sheet1!D${startRow}:D${startRow + 9}`;
-            }
-
-            await appendDataToSheet(config.spreadsheetId, range, comment);
             bot.sendMessage(
                 chatId,
-                `Ваш комментарий для целей на ${commentType} сохранен.`
+                `Ваш комментарий для целей на ${goalType} сохранен.`
             );
         } catch (error) {
             console.error(`Ошибка при сохранении комментария: ${error}`);
@@ -310,7 +257,11 @@ bot.on("callback_query", async (callbackQuery) => {
 
     switch (data) {
         case "daily_goals":
-            const dailyGoals = await getUserGoals(chatId, "daily_goals");
+            const dailyGoals = await getUserGoals(
+                config.spreadsheetId,
+                chatId,
+                "daily_goals"
+            );
             const dailyGoalsMessage = `Твои цели на день:\n\n${dailyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
@@ -332,7 +283,11 @@ bot.on("callback_query", async (callbackQuery) => {
             });
             break;
         case "weekly_goals":
-            const weeklyGoals = await getUserGoals(chatId, "weekly_goals");
+            const weeklyGoals = await getUserGoals(
+                config.spreadsheetId,
+                chatId,
+                "weekly_goals"
+            );
             const weeklyGoalsMessage = `Твои цели на неделю:\n\n${weeklyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
@@ -344,13 +299,21 @@ bot.on("callback_query", async (callbackQuery) => {
                                 text: "Включить напоминание",
                                 callback_data: "enable_weekly_reminder",
                             },
+                            {
+                                text: "Добавить комментарий",
+                                callback_data: "add_comment",
+                            },
                         ],
                     ],
                 },
             });
             break;
         case "monthly_goals":
-            const monthlyGoals = await getUserGoals(chatId, "monthly_goals");
+            const monthlyGoals = await getUserGoals(
+                config.spreadsheetId,
+                chatId,
+                "monthly_goals"
+            );
             const monthlyGoalsMessage = `Твои цели на месяц:\n\n${monthlyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
@@ -361,6 +324,10 @@ bot.on("callback_query", async (callbackQuery) => {
                             {
                                 text: "Включить напоминание",
                                 callback_data: "enable_monthly_reminder",
+                            },
+                            {
+                                text: "Добавить комментарий",
+                                callback_data: "add_comment",
                             },
                         ],
                     ],
@@ -409,13 +376,13 @@ bot.on("callback_query", async (callbackQuery) => {
             });
             break;
         case "comment_daily":
-            await handleAddComment(chatId, "день");
+            await handleAddComment(chatId, "daily_goals");
             break;
         case "comment_weekly":
-            await handleAddComment(chatId, "неделю");
+            await handleAddComment(chatId, "weekly_goals");
             break;
         case "comment_monthly":
-            await handleAddComment(chatId, "месяц");
+            await handleAddComment(chatId, "monthly_goals");
             break;
         default:
             break;

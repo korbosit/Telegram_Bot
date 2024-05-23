@@ -34,6 +34,7 @@ const getDataFromSheet = async (spreadsheetId, range) => {
     }
 };
 
+// Функция для добавления данных в Google Sheets
 const appendDataToSheet = async (spreadsheetId, range, values) => {
     try {
         const response = await gsapi.spreadsheets.values.append({
@@ -51,33 +52,34 @@ const appendDataToSheet = async (spreadsheetId, range, values) => {
     }
 };
 
-// Функция для добавления данных в Google Sheets
+// Функция для обновления данных в Google Sheets
+const updateDataInSheet = async (spreadsheetId, range, values) => {
+    try {
+        const response = await gsapi.spreadsheets.values.update({
+            spreadsheetId,
+            range,
+            valueInputOption: "RAW",
+            resource: {
+                values: [values],
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error(`Ошибка при обновлении данных: ${error}`);
+        throw error;
+    }
+};
+
+// Функция для получения следующей свободной строки
 const getNextFreeRow = async (spreadsheetId, sheetName) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:B`,
+            range: `${sheetName}!A:A`,
         });
 
         const values = response.data.values || [];
-        let nextRow;
-
-        // Если таблица пуста, новый пользователь будет добавлен во вторую строку
-        if (values.length === 0) {
-            nextRow = 2;
-        } else {
-            // Если таблица не пуста, определяем индекс последней строки
-            const lastRowIndex =
-                values.findLastIndex((row) =>
-                    row.some((value) => value !== "")
-                ) + 1;
-
-            // Вычисляем номер следующего блока строк для нового пользователя
-            const nextBlockIndex = Math.ceil(lastRowIndex / 10);
-            nextRow = nextBlockIndex * 10 + 2;
-        }
-
-        return nextRow;
+        return values.length + 1;
     } catch (error) {
         console.error(
             `Ошибка при получении следующей свободной строки: ${error}`
@@ -86,6 +88,7 @@ const getNextFreeRow = async (spreadsheetId, sheetName) => {
     }
 };
 
+// Функция для получения индекса строки пользователя
 const getUserRowIndex = async (spreadsheetId, userId) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
@@ -100,8 +103,7 @@ const getUserRowIndex = async (spreadsheetId, userId) => {
 
         if (userIndex === -1) throw new Error("User not found");
 
-        const startRow = Math.floor(userIndex / 10) * 10 + 2;
-        return startRow;
+        return userIndex + 1;
     } catch (error) {
         console.error(
             `Ошибка при получении индекса строки пользователя: ${error}`
@@ -110,35 +112,62 @@ const getUserRowIndex = async (spreadsheetId, userId) => {
     }
 };
 
-const getUserGoals = async (chatId, callbackData) => {
+// Функция для получения целей пользователя
+const getUserGoals = async (spreadsheetId, userId, goalType) => {
     try {
-        const response = await getDataFromSheet(
-            config.spreadsheetId,
-            "Sheet1!A:A"
-        );
-        const values = response || [];
-        const userIndex = values.findIndex(
-            (row) => row[0] === chatId.toString()
-        );
-
-        if (userIndex === -1) throw new Error("User not found");
-
-        const startRow = Math.floor(userIndex / 10) * 10 + 2;
-
-        const rangeMap = {
-            daily_goals: `Sheet1!C${startRow}:C${startRow + 9}`,
-            weekly_goals: `Sheet1!E${startRow}:E${startRow + 9}`,
-            monthly_goals: `Sheet1!G${startRow}:G${startRow + 9}`,
+        const rowIndex = await getUserRowIndex(spreadsheetId, userId);
+        const columnMap = {
+            daily_goals: `C${rowIndex}`,
+            weekly_goals: `E${rowIndex}`,
+            monthly_goals: `G${rowIndex}`,
         };
 
-        const data = await getDataFromSheet(
-            config.spreadsheetId,
-            rangeMap[callbackData]
-        );
-        const goals = data.flat().filter((goal) => goal !== "");
-        return goals;
+        const range = `Sheet1!${columnMap[goalType]}`;
+        const response = await getDataFromSheet(spreadsheetId, range);
+        return response[0] ? response[0] : []; // Возвращаем пустой массив, если данных нет
     } catch (error) {
         console.error(`Ошибка при получении данных целей: ${error}`);
+        return []; // Возвращаем пустой массив в случае ошибки
+    }
+};
+
+// Функция для обновления целей пользователя
+const updateUserGoals = async (
+    spreadsheetId,
+    userId,
+    goalType,
+    goals,
+    comments
+) => {
+    try {
+        const rowIndex = await getUserRowIndex(spreadsheetId, userId);
+        const goalColumnMap = {
+            daily_goals: `C${rowIndex}`,
+            weekly_goals: `E${rowIndex}`,
+            monthly_goals: `G${rowIndex}`,
+        };
+        const commentColumnMap = {
+            daily_goals: `D${rowIndex}`,
+            weekly_goals: `F${rowIndex}`,
+            monthly_goals: `H${rowIndex}`,
+        };
+        const dateColumnMap = {
+            daily_goals: `I${rowIndex}`,
+            weekly_goals: `J${rowIndex}`,
+            monthly_goals: `K${rowIndex}`,
+        };
+
+        const now = new Date().toISOString();
+
+        await updateDataInSheet(spreadsheetId, goalColumnMap[goalType], [
+            goals,
+        ]);
+        await updateDataInSheet(spreadsheetId, commentColumnMap[goalType], [
+            comments,
+        ]);
+        await updateDataInSheet(spreadsheetId, dateColumnMap[goalType], [now]);
+    } catch (error) {
+        console.error(`Ошибка при обновлении данных целей: ${error}`);
         throw error;
     }
 };
@@ -146,7 +175,9 @@ const getUserGoals = async (chatId, callbackData) => {
 module.exports = {
     getDataFromSheet,
     appendDataToSheet,
+    updateDataInSheet,
     getNextFreeRow,
     getUserGoals,
+    updateUserGoals,
     getUserRowIndex,
 };
