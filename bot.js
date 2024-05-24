@@ -229,11 +229,17 @@ const handleAddComment = async (chatId, goalType) => {
     bot.once("message", async (msg) => {
         const comment = msg.text;
         try {
+            // Получаем текущие цели для данного типа
+            const currentGoals =
+                (
+                    await getUserGoals(config.spreadsheetId, chatId, goalType)
+                )[0] || "";
+
             await updateUserGoals(
                 config.spreadsheetId,
                 chatId,
                 goalType,
-                "",
+                currentGoals,
                 comment
             );
             bot.sendMessage(
