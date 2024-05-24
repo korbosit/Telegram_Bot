@@ -159,8 +159,14 @@ const updateUserGoals = async (
 
         const now = new Date().toISOString();
 
+        // Получаем текущие цели, если они не были переданы
+        const currentGoals =
+            goals ||
+            (await getUserGoals(spreadsheetId, userId, goalType))[0] ||
+            "";
+
         await updateDataInSheet(spreadsheetId, goalColumnMap[goalType], [
-            goals,
+            currentGoals,
         ]);
         await updateDataInSheet(spreadsheetId, commentColumnMap[goalType], [
             comments,
