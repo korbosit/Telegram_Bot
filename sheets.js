@@ -193,6 +193,27 @@ const formatDateForKiev = (dateString) => {
     });
 };
 
+const checkUserExists = async (spreadsheetId, userId, userName) => {
+    try {
+        const response = await gsapi.spreadsheets.values.get({
+            spreadsheetId,
+            range: "Sheet1!A:B",
+        });
+
+        const values = response.data.values || [];
+        const userExists = values.some(
+            (row) => row[0] === userId.toString() && row[1] === userName
+        );
+
+        return userExists;
+    } catch (error) {
+        console.error(
+            `Ошибка при проверке существования пользователя: ${error}`
+        );
+        throw error;
+    }
+};
+
 module.exports = {
     getDataFromSheet,
     appendDataToSheet,
@@ -202,4 +223,5 @@ module.exports = {
     updateUserGoals,
     getUserRowIndex,
     formatDateForKiev,
+    checkUserExists,
 };

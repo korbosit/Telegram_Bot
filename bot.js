@@ -10,6 +10,7 @@ const {
     getUserRowIndex,
     formatDateForKiev,
     updateDataInSheet,
+    checkUserExists,
 } = require("./sheets");
 
 const ADMIN_USER_ID = 6810209450;
@@ -29,9 +30,23 @@ bot.on("polling_error", (error) => {
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.chat.first_name;
+    const userId = chatId.toString();
 
-    if (!registeredUsers[chatId]) {
-        try {
+    try {
+        const userExists = await checkUserExists(
+            config.spreadsheetId,
+            userId,
+            firstName
+        );
+
+        if (userExists) {
+            bot.sendMessage(
+                chatId,
+                `Пользователь ${userId} с именем ${firstName} уже существует!`
+            );
+            sendWelcomeMessage(chatId, firstName);
+            sendWelcomeButtons(chatId, firstName);
+        } else {
             // Находим следующую свободную строку
             const nextFreeRow = await getNextFreeRow(
                 config.spreadsheetId,
@@ -42,68 +57,21 @@ bot.onText(/\/start/, async (msg) => {
             await appendDataToSheet(
                 config.spreadsheetId,
                 `Sheet1!A${nextFreeRow}:B${nextFreeRow}`,
-                [chatId.toString(), firstName]
+                [userId, firstName]
             );
 
             // Регистрируем пользователя в кэш
             registeredUsers[chatId] = true;
 
             // Отправляем приветственное сообщение и кнопки
-            bot.sendMessage(
-                chatId,
-                `Приветствую тебя, ${firstName}, твой ID: ${chatId}! Я чат-бот для напоминаний твоих целей!`,
-                {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: "Цели на день",
-                                    callback_data: "daily_goals",
-                                },
-                                {
-                                    text: "Цели на неделю",
-                                    callback_data: "weekly_goals",
-                                },
-                                {
-                                    text: "Цели на месяц",
-                                    callback_data: "monthly_goals",
-                                },
-                            ],
-                        ],
-                    },
-                }
-            );
-        } catch (error) {
-            console.error(`Ошибка при регистрации пользователя: ${error}`);
-            bot.sendMessage(
-                chatId,
-                "Произошла ошибка при регистрации. Пожалуйста, попробуйте позже."
-            );
+            sendWelcomeMessage(chatId, firstName);
+            sendWelcomeButtons(chatId, firstName);
         }
-    } else {
+    } catch (error) {
+        console.error(`Ошибка при регистрации пользователя: ${error}`);
         bot.sendMessage(
             chatId,
-            "Вы уже зарегистрированы. Теперь выберите необходимую опцию.",
-            {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: "Цели на день",
-                                callback_data: "daily_goals",
-                            },
-                            {
-                                text: "Цели на неделю",
-                                callback_data: "weekly_goals",
-                            },
-                            {
-                                text: "Цели на месяц",
-                                callback_data: "monthly_goals",
-                            },
-                        ],
-                    ],
-                },
-            }
+            "Произошла ошибка при регистрации. Пожалуйста, попробуйте позже."
         );
     }
 });
@@ -282,6 +250,33 @@ const handleAddComment = async (chatId, goalType) => {
                 "Произошла ошибка при сохранении комментария. Пожалуйста, попробуйте позже."
             );
         }
+    });
+};
+
+const sendWelcomeMessage = (chatId, firstName) => {
+    bot.sendMessage(chatId, `Приветствую, ${firstName}!`);
+};
+
+const sendWelcomeButtons = (chatId, firstName) => {
+    bot.sendMessage(chatId, `Выберите тип целей:`, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: "Цели на день",
+                        callback_data: "daily_goals",
+                    },
+                    {
+                        text: "Цели на неделю",
+                        callback_data: "weekly_goals",
+                    },
+                    {
+                        text: "Цели на месяц",
+                        callback_data: "monthly_goals",
+                    },
+                ],
+            ],
+        },
     });
 };
 
