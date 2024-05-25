@@ -8,6 +8,8 @@ const {
     getUserGoals,
     updateUserGoals,
     getUserRowIndex,
+    formatDateForKiev,
+    updateDataInSheet,
 } = require("./sheets");
 
 const ADMIN_USER_ID = 6810209450;
@@ -235,6 +237,11 @@ const handleAddComment = async (chatId, goalType) => {
                     await getUserGoals(config.spreadsheetId, chatId, goalType)
                 )[0] || "";
 
+            // Получаем текущую дату и время
+            const now = new Date().toISOString();
+            const kievDateTime = formatDateForKiev(now); // Конвертируем дату в формат по киевскому времени
+
+            // Обновляем цели и комментарий
             await updateUserGoals(
                 config.spreadsheetId,
                 chatId,
@@ -242,6 +249,28 @@ const handleAddComment = async (chatId, goalType) => {
                 currentGoals,
                 comment
             );
+
+            // Обновляем дату и время комментария
+            const commentColumnMap = {
+                daily_goals: `L${await getUserRowIndex(
+                    config.spreadsheetId,
+                    chatId
+                )}`,
+                weekly_goals: `M${await getUserRowIndex(
+                    config.spreadsheetId,
+                    chatId
+                )}`,
+                monthly_goals: `N${await getUserRowIndex(
+                    config.spreadsheetId,
+                    chatId
+                )}`,
+            };
+            await updateDataInSheet(
+                config.spreadsheetId,
+                commentColumnMap[goalType],
+                [kievDateTime]
+            );
+
             bot.sendMessage(
                 chatId,
                 `Ваш комментарий для целей на ${goalType} сохранен.`

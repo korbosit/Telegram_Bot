@@ -182,8 +182,7 @@ const updateUserGoals = async (
 
 const formatDateForKiev = (dateString) => {
     const dateObj = new Date(dateString);
-    dateObj.setMinutes(dateObj.getMinutes() + 180); // Добавляем 3 часа (180 минут)
-
+    // Не нужно добавлять или вычитать часы, так как мы находимся в том же часовом поясе
     return dateObj.toLocaleString("ru-RU", {
         day: "2-digit",
         month: "2-digit",
