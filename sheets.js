@@ -158,8 +158,8 @@ const updateUserGoals = async (
         };
 
         const now = new Date().toISOString();
+        const kievDateTime = formatDateForKiev(now); // Конвертируем дату в формат по киевскому времени
 
-        // Получаем текущие цели, если они не были переданы
         const currentGoals =
             goals ||
             (await getUserGoals(spreadsheetId, userId, goalType))[0] ||
@@ -171,11 +171,27 @@ const updateUserGoals = async (
         await updateDataInSheet(spreadsheetId, commentColumnMap[goalType], [
             comments,
         ]);
-        await updateDataInSheet(spreadsheetId, dateColumnMap[goalType], [now]);
+        await updateDataInSheet(spreadsheetId, dateColumnMap[goalType], [
+            kievDateTime,
+        ]); // Используем отформатированную дату
     } catch (error) {
         console.error(`Ошибка при обновлении данных целей: ${error}`);
         throw error;
     }
+};
+
+const formatDateForKiev = (dateString) => {
+    const dateObj = new Date(dateString);
+    dateObj.setMinutes(dateObj.getMinutes() + 180); // Добавляем 3 часа (180 минут)
+
+    return dateObj.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h24",
+    });
 };
 
 module.exports = {
@@ -186,4 +202,5 @@ module.exports = {
     getUserGoals,
     updateUserGoals,
     getUserRowIndex,
+    formatDateForKiev,
 };
