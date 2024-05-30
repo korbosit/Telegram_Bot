@@ -18,6 +18,7 @@ const ADMIN_USER_ID = 6810209450;
 const bot = new TelegramBot(config.botToken, { polling: true });
 let registeredUsers = {};
 let reminderTasks = {};
+let awaitingComment = {};
 
 // Очистка кэша при перезапуске бота
 bot.on("polling_error", (error) => {
@@ -195,21 +196,28 @@ const disableReminder = (chatId, reminderType) => {
 // Функция для обработки добавления комментариев
 const handleAddComment = async (chatId, goalType) => {
     bot.sendMessage(chatId, "Введите ваш комментарий:");
+    awaitingComment[chatId] = goalType;
 
     bot.once("message", async (msg) => {
         const comment = msg.text;
+        const goalType = awaitingComment[chatId];
+
+        if (!goalType) {
+            bot.sendMessage(
+                chatId,
+                "Произошла ошибка. Пожалуйста, попробуйте еще раз."
+            );
+            return;
+        }
+
         try {
-            // Получаем текущие цели для данного типа
             const currentGoals =
                 (
                     await getUserGoals(config.spreadsheetId, chatId, goalType)
                 )[0] || "";
-
-            // Получаем текущую дату и время
             const now = new Date().toISOString();
-            const kievDateTime = formatDateForKiev(now); // Конвертируем дату в формат по киевскому времени
+            const kievDateTime = formatDateForKiev(now);
 
-            // Обновляем цели и комментарий
             await updateUserGoals(
                 config.spreadsheetId,
                 chatId,
@@ -218,7 +226,6 @@ const handleAddComment = async (chatId, goalType) => {
                 comment
             );
 
-            // Обновляем дату и время комментария
             const commentColumnMap = {
                 daily_goals: `L${await getUserRowIndex(
                     config.spreadsheetId,
@@ -249,6 +256,8 @@ const handleAddComment = async (chatId, goalType) => {
                 chatId,
                 "Произошла ошибка при сохранении комментария. Пожалуйста, попробуйте позже."
             );
+        } finally {
+            delete awaitingComment[chatId];
         }
     });
 };
@@ -422,31 +431,16 @@ bot.on("callback_query", async (callbackQuery) => {
 });
 
 // Обработчик для непонятных текстовых сообщений
-bot.on("message", async (msg) => {
+bot.on("message", (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    // Проверяем, является ли сообщение командой или кнопкой из предыдущих обработчиков
-    const isHandledCommand =
-        /^\//.test(text) ||
-        [
-            "daily_goals",
-            "weekly_goals",
-            "monthly_goals",
-            "enable_daily_reminder",
-            "enable_weekly_reminder",
-            "enable_monthly_reminder",
-            "add_comment",
-            "comment_daily",
-            "comment_weekly",
-            "comment_monthly",
-        ].includes(text);
+    if (awaitingComment[chatId]) {
+        // Если бот ожидает комментарий, то обработка комментария будет происходить в handleAddComment
+        return;
+    }
 
-    if (!isHandledCommand) {
-        // Отправляем сообщение, если текст не является командой или кнопкой
-        bot.sendMessage(
-            chatId,
-            "Ой-ой-ой, братишка, я не знаю такой команды 🤷‍♀️🤷‍♀️🤷‍♀️"
-        );
+    if (!text.startsWith("/")) {
+        bot.sendMessage(chatId, "Ой-ой-ой, я не знаю такой команды 🤷‍♀️🤷‍♀️🤷‍♀️");
     }
 });
