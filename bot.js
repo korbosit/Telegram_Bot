@@ -420,3 +420,33 @@ bot.on("callback_query", async (callbackQuery) => {
 
     bot.answerCallbackQuery(callbackQuery.id);
 });
+
+// Обработчик для непонятных текстовых сообщений
+bot.on("message", async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    // Проверяем, является ли сообщение командой или кнопкой из предыдущих обработчиков
+    const isHandledCommand =
+        /^\//.test(text) ||
+        [
+            "daily_goals",
+            "weekly_goals",
+            "monthly_goals",
+            "enable_daily_reminder",
+            "enable_weekly_reminder",
+            "enable_monthly_reminder",
+            "add_comment",
+            "comment_daily",
+            "comment_weekly",
+            "comment_monthly",
+        ].includes(text);
+
+    if (!isHandledCommand) {
+        // Отправляем сообщение, если текст не является командой или кнопкой
+        bot.sendMessage(
+            chatId,
+            "Ой-ой-ой, братишка, я не знаю такой команды 🤷‍♀️🤷‍♀️🤷‍♀️"
+        );
+    }
+});
