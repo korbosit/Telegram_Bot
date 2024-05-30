@@ -27,7 +27,7 @@ const getDataFromSheet = async (spreadsheetId, range) => {
             spreadsheetId,
             range,
         });
-        return response.data.values || [];
+        return response.data.values || [[]]; // Возвращаем пустой массив с пустым массивом внутри, если данных нет
     } catch (error) {
         console.error(`Ошибка при получении данных: ${error}`);
         throw error;
@@ -137,7 +137,7 @@ const updateUserGoals = async (
     userId,
     goalType,
     goals,
-    comments
+    newComment
 ) => {
     try {
         const rowIndex = await getUserRowIndex(spreadsheetId, userId);
@@ -151,29 +151,36 @@ const updateUserGoals = async (
             weekly_goals: `F${rowIndex}`,
             monthly_goals: `H${rowIndex}`,
         };
-        const dateColumnMap = {
-            daily_goals: `I${rowIndex}`,
-            weekly_goals: `J${rowIndex}`,
-            monthly_goals: `K${rowIndex}`,
-        };
 
         const now = new Date().toISOString();
-        const kievDateTime = formatDateForKiev(now); // Конвертируем дату в формат по киевскому времени
+        const kievDateTime = formatDateForKiev(now);
 
         const currentGoals =
             goals ||
             (await getUserGoals(spreadsheetId, userId, goalType))[0] ||
             "";
+        const currentComments =
+            (
+                await getDataFromSheet(
+                    spreadsheetId,
+                    `Sheet1!${commentColumnMap[goalType]}`
+                )
+            )[0][0] || "";
+
+        const newCommentNumber = currentComments
+            ? currentComments.split(")").length
+            : 1;
+        const updatedComments = currentComments
+            ? `${currentComments}${newCommentNumber}) ${newComment}`
+            : `1) ${newComment}`;
 
         await updateDataInSheet(spreadsheetId, goalColumnMap[goalType], [
             currentGoals,
         ]);
         await updateDataInSheet(spreadsheetId, commentColumnMap[goalType], [
-            comments,
+            updatedComments,
         ]);
-        await updateDataInSheet(spreadsheetId, dateColumnMap[goalType], [
-            kievDateTime,
-        ]); // Используем отформатированную дату
+        await updateDataInSheet(spreadsheetId, `I${rowIndex}`, [kievDateTime]);
     } catch (error) {
         console.error(`Ошибка при обновлении данных целей: ${error}`);
         throw error;
