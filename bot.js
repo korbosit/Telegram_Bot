@@ -95,19 +95,19 @@ const enableReminder = async (chatId, reminderType, bot, reminderTasks) => {
     const reminderMap = {
         enable_daily_reminder: {
             schedule: "30 6,16 * * 1-5", // 9:30 AM и 4:00 PM по Киевскому времени (UTC+3) с понедельника по пятницу
-            message: "Твои цели на день",
+            message: "Твои цели на день 👇🤘✌️ ",
             goalsCallback: "daily_goals",
             reminderMessage: "Ежедневное напоминание включено.",
         },
         enable_weekly_reminder: {
             schedule: "35 6 * * 1", // 9:35 AM по Киевскому времени (UTC+3) каждый понедельник
-            message: "Твои цели на неделю",
+            message: "Твои цели на неделю 👇🤘✌️ ",
             goalsCallback: "weekly_goals",
             reminderMessage: "Еженедельное напоминание включено.",
         },
         enable_monthly_reminder: {
             schedule: "40 6 1-7 * *", // 9:40 AM по Киевскому времени (UTC+3) в первый понедельник каждого месяца
-            message: "Твои цели на месяц",
+            message: "Твои цели на месяц 👇🤘✌️ ",
             goalsCallback: "monthly_goals",
             reminderMessage: "Ежемесячное напоминание включено.",
         },
@@ -254,24 +254,24 @@ const handleAddComment = async (chatId, goalType) => {
 };
 
 const sendWelcomeMessage = (chatId, firstName) => {
-    bot.sendMessage(chatId, `Приветствую, ${firstName}!`);
+    bot.sendMessage(chatId, `Приветствую, ${firstName} 👌!`);
 };
 
 const sendWelcomeButtons = (chatId, firstName) => {
-    bot.sendMessage(chatId, `Выберите тип целей:`, {
+    bot.sendMessage(chatId, `Выберите тип целей: ✏️✍️`, {
         reply_markup: {
             inline_keyboard: [
                 [
                     {
-                        text: "Цели на день",
+                        text: "Цели на день ",
                         callback_data: "daily_goals",
                     },
                     {
-                        text: "Цели на неделю",
+                        text: "Цели на неделю ",
                         callback_data: "weekly_goals",
                     },
                     {
-                        text: "Цели на месяц",
+                        text: "Цели на месяц ",
                         callback_data: "monthly_goals",
                     },
                 ],
@@ -292,7 +292,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 chatId,
                 "daily_goals"
             );
-            const dailyGoalsMessage = `Твои цели на день:\n\n${dailyGoals
+            const dailyGoalsMessage = `Твои цели на день ✅:\n\n${dailyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
             bot.sendMessage(chatId, dailyGoalsMessage, {
@@ -318,7 +318,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 chatId,
                 "weekly_goals"
             );
-            const weeklyGoalsMessage = `Твои цели на неделю:\n\n${weeklyGoals
+            const weeklyGoalsMessage = `Твои цели на неделю ✅:\n\n${weeklyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
             bot.sendMessage(chatId, weeklyGoalsMessage, {
@@ -344,7 +344,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 chatId,
                 "monthly_goals"
             );
-            const monthlyGoalsMessage = `Твои цели на месяц:\n\n${monthlyGoals
+            const monthlyGoalsMessage = `Твои цели на месяц ✅:\n\n${monthlyGoals
                 .map((goal, index) => `${index + 1}. ${goal}`)
                 .join("\n")}`;
             bot.sendMessage(chatId, monthlyGoalsMessage, {
