@@ -167,12 +167,16 @@ const updateUserGoals = async (
                 )
             )[0][0] || "";
 
-        const newCommentNumber = currentComments
-            ? currentComments.split(")").length
-            : 1;
-        const updatedComments = currentComments
-            ? `${currentComments}${newCommentNumber}) ${newComment}`
-            : `1) ${newComment}`;
+        const currentCommentLines = currentComments
+            ? currentComments.split("\n")
+            : [];
+        const newCommentNumber = currentCommentLines.length + 1;
+        const updatedComments = [
+            ...currentCommentLines.map(
+                (line, index) => `${index + 1}) ${line.replace(/^\d+\) /, "")}`
+            ),
+            `${newCommentNumber}) ${newComment}`,
+        ].join("\n");
 
         await updateDataInSheet(spreadsheetId, goalColumnMap[goalType], [
             currentGoals,
