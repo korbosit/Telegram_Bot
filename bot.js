@@ -11,6 +11,7 @@ const {
     formatDateForKiev,
     updateDataInSheet,
     checkUserExists,
+    unloadDataToAll,
 } = require("./sheets");
 
 const ADMIN_USER_ID = 6810209450;
@@ -201,6 +202,8 @@ const handleAddComment = async (chatId, goalType) => {
     bot.once("message", async (msg) => {
         const comment = msg.text;
         const goalType = awaitingComment[chatId];
+        const userId = msg.from.id.toString();
+        const userName = msg.from.first_name;
 
         if (!goalType) {
             bot.sendMessage(
@@ -250,6 +253,15 @@ const handleAddComment = async (chatId, goalType) => {
                 chatId,
                 `Ваш комментарий для целей на ${goalType} сохранен.`
             );
+
+            // Отправляем уведомление администратору
+            const adminNotification = getAdminNotification(
+                userName,
+                userId,
+                goalType,
+                comment
+            );
+            bot.sendMessage(ADMIN_USER_ID, adminNotification);
         } catch (error) {
             console.error(`Ошибка при сохранении комментария: ${error}`);
             bot.sendMessage(
@@ -260,6 +272,19 @@ const handleAddComment = async (chatId, goalType) => {
             delete awaitingComment[chatId];
         }
     });
+};
+
+// Функция для формирования уведомления администратору
+const getAdminNotification = (userName, userId, goalType, comment) => {
+    const goalTypeMap = {
+        daily_goals: "день",
+        weekly_goals: "неделю",
+        monthly_goals: "месяц",
+    };
+
+    const goalTypePeriod = goalTypeMap[goalType];
+
+    return `Пользователь с именем ${userName} и id ${userId} оставил комментарий для целей на ${goalTypePeriod} ✏️✍️: ${comment}`;
 };
 
 const sendWelcomeMessage = (chatId, firstName) => {
@@ -442,5 +467,23 @@ bot.on("message", (msg) => {
 
     if (!text.startsWith("/")) {
         bot.sendMessage(chatId, "Ой-ой-ой, я не знаю такой команды 🤷‍♀️🤷‍♀️🤷‍♀️");
+    }
+});
+
+bot.onText(/\/unload/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    if (userId === ADMIN_USER_ID) {
+        try {
+            // Вызвать функцию для выгрузки данных из Sheet1 в all
+            await unloadDataToAll(config.spreadsheetId);
+            bot.sendMessage(chatId, "Данные успешно выгружены в лист all.");
+        } catch (error) {
+            console.error(`Ошибка при выгрузке данных: ${error}`);
+            bot.sendMessage(chatId, "Произошла ошибка при выгрузке данных.");
+        }
+    } else {
+        bot.sendMessage(chatId, "У вас нет прав для выполнения этой команды.");
     }
 });

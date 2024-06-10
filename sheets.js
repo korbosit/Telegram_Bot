@@ -225,6 +225,53 @@ const checkUserExists = async (spreadsheetId, userId, userName) => {
     }
 };
 
+const unloadDataToAll = async (spreadsheetId) => {
+    try {
+        // Получаем данные из листа Sheet1
+        const sheet1Data = await getDataFromSheet(spreadsheetId, "Sheet1!A:N");
+
+        // Получаем существующие данные из листа all
+        const existingAllData = await getDataFromSheet(
+            spreadsheetId,
+            "all!A:N"
+        );
+
+        // Получаем текущую дату и время
+        const now = new Date();
+        const dateTimeString = now.toLocaleString();
+
+        // Создаем новый массив с датой и временем выгрузки, пустой строкой, данными из Sheet1 и еще одной пустой строкой
+        const newData = [
+            [`Выгрузка от ${dateTimeString}`],
+            [],
+            ...sheet1Data,
+            [],
+        ];
+
+        // Объединяем существующие данные с новыми данными
+        const updatedAllData = [...existingAllData, ...newData];
+
+        // Очищаем лист all
+        await gsapi.spreadsheets.values.clear({
+            spreadsheetId,
+            range: "all!A:N",
+        });
+
+        // Записываем обновленные данные в лист all
+        await gsapi.spreadsheets.values.update({
+            spreadsheetId,
+            range: "all!A:N",
+            valueInputOption: "RAW",
+            resource: {
+                values: updatedAllData,
+            },
+        });
+    } catch (error) {
+        console.error(`Ошибка при выгрузке данных: ${error}`);
+        throw error;
+    }
+};
+
 module.exports = {
     getDataFromSheet,
     appendDataToSheet,
@@ -235,4 +282,5 @@ module.exports = {
     getUserRowIndex,
     formatDateForKiev,
     checkUserExists,
+    unloadDataToAll,
 };
