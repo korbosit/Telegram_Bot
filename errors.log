@@ -1,0 +1,28 @@
+2024-06-10T15:04:50.909Z - Polling error: EFATAL: Error: connect ETIMEDOUT 149.154.167.220:443
+2024-06-10T15:07:25.374Z - Необработанное отклонение промиса: RequestError: Error: connect ETIMEDOUT 149.154.167.220:443
+    at new RequestError (C:\Telegram_Bot\node_modules\request-promise-core\lib\errors.js:14:15)
+    at plumbing.callback (C:\Telegram_Bot\node_modules\request-promise-core\lib\plumbing.js:87:29)
+    at Request.RP$callback [as _callback] (C:\Telegram_Bot\node_modules\request-promise-core\lib\plumbing.js:46:31)
+    at self.callback (C:\Telegram_Bot\node_modules\@cypress\request\request.js:183:22)
+    at Request.emit (node:events:514:28)
+    at Request.onRequestError (C:\Telegram_Bot\node_modules\@cypress\request\request.js:869:8)
+    at ClientRequest.emit (node:events:514:28)
+    at TLSSocket.socketErrorListener (node:_http_client:495:9)
+    at TLSSocket.emit (node:events:514:28)
+    at emitErrorNT (node:internal/streams/destroy:151:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:116:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+2024-06-10T15:07:25.381Z - Необработанное отклонение промиса: RequestError: Error: connect ETIMEDOUT 149.154.167.220:443
+    at new RequestError (C:\Telegram_Bot\node_modules\request-promise-core\lib\errors.js:14:15)
+    at plumbing.callback (C:\Telegram_Bot\node_modules\request-promise-core\lib\plumbing.js:87:29)
+    at Request.RP$callback [as _callback] (C:\Telegram_Bot\node_modules\request-promise-core\lib\plumbing.js:46:31)
+    at self.callback (C:\Telegram_Bot\node_modules\@cypress\request\request.js:183:22)
+    at Request.emit (node:events:514:28)
+    at Request.onRequestError (C:\Telegram_Bot\node_modules\@cypress\request\request.js:869:8)
+    at ClientRequest.emit (node:events:514:28)
+    at TLSSocket.socketErrorListener (node:_http_client:495:9)
+    at TLSSocket.emit (node:events:514:28)
+    at emitErrorNT (node:internal/streams/destroy:151:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:116:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+2024-06-10T16:02:31.561Z - Ошибка при регистрации пользователя: Error: EFATAL: Error: connect ETIMEDOUT 149.154.167.220:443

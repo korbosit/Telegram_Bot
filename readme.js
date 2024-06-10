@@ -1,1 +1,0 @@
-const ADMIN_USER_ID = 6810209450;
