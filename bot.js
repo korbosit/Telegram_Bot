@@ -42,16 +42,12 @@ bot.onText(/\/start/, async (msg) => {
     const userId = chatId.toString();
 
     try {
-        const userExists = await checkUserExists(
-            config.spreadsheetId,
-            userId,
-            firstName
-        );
+        const userExists = await checkUserExists(config.spreadsheetId, userId);
 
         if (userExists) {
             await bot.sendMessage(
                 chatId,
-                `Пользователь ${userId} с именем ${firstName} уже существует!`
+                `Пользователь c таким id ::: ${userId} ::: с именем ${firstName} уже существует!`
             );
             await sendWelcomeMessage(chatId, firstName);
             await sendWelcomeButtons(chatId, firstName);

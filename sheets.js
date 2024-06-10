@@ -202,17 +202,15 @@ const formatDateForKiev = (dateString) => {
     });
 };
 
-const checkUserExists = async (spreadsheetId, userId, userName) => {
+const checkUserExists = async (spreadsheetId, userId) => {
     try {
         const response = await gsapi.spreadsheets.values.get({
             spreadsheetId,
-            range: "Sheet1!A:B",
+            range: "Sheet1!A:A", // Проверяем только колонку с userId
         });
 
         const values = response.data.values || [];
-        const userExists = values.some(
-            (row) => row[0] === userId.toString() && row[1] === userName
-        );
+        const userExists = values.some((row) => row[0] === userId.toString());
 
         return userExists;
     } catch (error) {
