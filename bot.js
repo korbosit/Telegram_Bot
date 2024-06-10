@@ -153,13 +153,13 @@ const enableReminder = async (chatId, reminderType, bot, reminderTasks) => {
             reminderTasks[chatId] = reminderTasks[chatId] || {};
             reminderTasks[chatId][reminderType] = task;
 
-            // Отправляем сообщение с кнопкой "Комментарии"
+            // Отправляем сообщение с кнопкой "Отчет"
             bot.sendMessage(chatId, reminder.reminderMessage, {
                 reply_markup: {
                     inline_keyboard: [
                         [
                             {
-                                text: "Комментарии",
+                                text: "Отчёт",
                                 callback_data: "add_comment",
                             },
                         ],
@@ -361,7 +361,7 @@ bot.on("callback_query", async (callbackQuery) => {
                                 callback_data: "enable_daily_reminder",
                             },
                             {
-                                text: "Добавить комментарий",
+                                text: "Добавить отчёт",
                                 callback_data: "add_comment",
                             },
                         ],
@@ -387,7 +387,7 @@ bot.on("callback_query", async (callbackQuery) => {
                                 callback_data: "enable_weekly_reminder",
                             },
                             {
-                                text: "Добавить комментарий",
+                                text: "Добавить отчёт",
                                 callback_data: "add_comment",
                             },
                         ],
@@ -413,7 +413,7 @@ bot.on("callback_query", async (callbackQuery) => {
                                 callback_data: "enable_monthly_reminder",
                             },
                             {
-                                text: "Добавить комментарий",
+                                text: "Добавить отчёт",
                                 callback_data: "add_comment",
                             },
                         ],
@@ -441,20 +441,20 @@ bot.on("callback_query", async (callbackQuery) => {
             );
             break;
         case "add_comment":
-            bot.sendMessage(chatId, "Выберите тип комментария:", {
+            bot.sendMessage(chatId, "Выберите тип отчёта:", {
                 reply_markup: {
                     inline_keyboard: [
                         [
                             {
-                                text: "День",
+                                text: "Отчёт на день",
                                 callback_data: "comment_daily",
                             },
                             {
-                                text: "Неделя",
+                                text: "Отчёт на неделю",
                                 callback_data: "comment_weekly",
                             },
                             {
-                                text: "Месяц",
+                                text: "Отчёт на месяц",
                                 callback_data: "comment_monthly",
                             },
                         ],
